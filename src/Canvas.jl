@@ -44,6 +44,7 @@ function generate_nodes(canvas::Canvas,n::Int)
 		node = Node(i,0,get_cell(canvas,p),p)
 		push!(nodes,node)
 	end
+	return nodes
 end
 
 function generate_point(canvas::Canvas)
@@ -57,12 +58,13 @@ end
 
 function is_occupied(canvas::Canvas,p)
 	cell = get_cell(canvas,p)
-	return p in cell;
+	return p in cell.nodes;
 end
 
-function gel_cell(canvas::Canvas,p)
+function get_cell(canvas::Canvas,p)
 	l = canvas.r ^ 2
-	i = ceil(Int,l / p[1])
-	j = ceil(Int,l / p[2])
+	i = ceil(Int,p[1] / l)
+	j = ceil(Int,p[2] / l)
 	return canvas.cells[i][j]
 end
+
