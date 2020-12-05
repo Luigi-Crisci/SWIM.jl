@@ -6,12 +6,12 @@ mutable struct Node
 	seen::Array
 	waiting_time::Int
 	waited_time::Int
-	waiting_upper_bound::Int
 	starting_position::Array
+	waiting_upper_bound::Int
 
-	function Node(id::int,status::int,home,position::Array,num_cells::Int)
+	function Node(id::int,status::int,home,position::Array,num_cells::Int,upper_bound::Int)
 		seen = zeros(Int,num_cells,1)
-		new(id,status,home,position,seen,0,0,position)
+		new(id,status,home,position,seen,0,0,position,upper_bound)
 	end
 
 end
@@ -22,26 +22,29 @@ const LEAVE = 2
 const WAITING = 3
 
 function move(node::Node,canvas::Canvas,time::DateTime,alpha::Float16,k::Float16,seconds::Float16)
-	#TODO: Add events here
-	if node.status == START 
+	if node.status == START  || node.status == LEAVE
 		choose_destination(node,canvas,alpha,k)
+		procede(node,seconds)
+		return
 	elseif node.status == WAITING 
 		wait_state(node,seconds)
+		return
 	end
-
+	#Moving state
 	procede(node,seconds)
-	#TODO: Update seen for the cells (Only if arrived at destination? Check paper)
 end
 
 #TODO: What the hell means the distance speed descrition?
 function procede(node::Node,seconds::Float16)
+	node.status = MOV
 	# I'm using a fixed value, but it should be constructed
 	speed = 1.5
 	distance = node.home.position - node.starting_position
 	angle = atan(distance[2],distance[1])
 	node.position = node.position + [sin(angle),cos(angle)] * speed * seconds # Make the node procede
 
-	if inside_home_cell(node) || have_surpassed_cell(node,angle) #It must be set to the center of the cell
+	if inside_home_cell(node) || have_surpassed_cell(node,angle)
+		fix_surpassed_cell(node,angle)
 		wait_state(node,seconds)
 end
 
@@ -49,6 +52,12 @@ end
 function have_surpassed_cell(node,angle)
 	distance = node.home.position - node.position
 	return angle != atan(distance[2],distance[1])
+end
+
+function fix_surpassed_cell(node,angle)
+	if have_surpassed_cell(node,angle)
+		node.position = node.home.position
+	end
 end
 
 function choose_destination(node,canvas,alpha,k)
