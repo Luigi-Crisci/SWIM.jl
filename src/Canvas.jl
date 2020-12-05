@@ -1,22 +1,25 @@
 
 mutable struct Cell
-	position::Tuple{Float64,Float64}
+	position::Array{Float64}
 	nodes::Set{Node}
+	l::Int
 end
 
-Cell(p) = Cell(p,Set{Node}())
+Cell(p,l) = Cell(p,Set{Node}(),l)
 
 mutable struct Canvas
 	x::Int
 	y::Int 
 	r::Int
 	cells::Vector{Vector{Cell}}
+	num_cells::Int
 end
 
-Canvas(x,y,r) = Canvas(x,y,r,[])
+Canvas(x,y,r) = Canvas(x,y,r,[],0)
 
 function initialize(canvas::Canvas)
-	l = canvas.r^2
+	l = round(Int,sqrt( (canvas.r^2) / 2)) #FIXME:
+	
 	if canvas.x % l != 0 || canvas.y % l != 0
 		return
 	end
@@ -26,14 +29,14 @@ function initialize(canvas::Canvas)
 		y = l / 2
 		cells = Vector{Cell}([])
 		while  y < canvas.y
-			cell = Cell((x,y))
+			cell = Cell([x,y],l)
 			push!(cells,cell)
 			y += l
 		end
 		x += l
 		push!(canvas.cells,cells)
 	end
-
+	canvas.num_cells = canvas.x / l + canvas.y / l
 end
 
 function generate_nodes(canvas::Canvas,n::Int)
@@ -41,7 +44,7 @@ function generate_nodes(canvas::Canvas,n::Int)
 	nodes = []
 	for i in 1:n
 		p = generate_point(canvas)
-		node = Node(i,0,get_cell(canvas,p),p)
+		node = Node(i,0,get_cell(canvas,p),p,canvas.num_cells)
 		push!(nodes,node)
 	end
 	return nodes
@@ -49,7 +52,7 @@ end
 
 function generate_point(canvas::Canvas)
 	while true
-		p = (rand(1:canvas.x),rand(1:canvas.y))
+		p = [rand(1:canvas.x),rand(1:canvas.y)]
 		if !is_occupied(canvas,p)
 			return p
 		end
@@ -58,7 +61,8 @@ end
 
 function is_occupied(canvas::Canvas,p)
 	cell = get_cell(canvas,p)
-	return p in cell.nodes;
+	return lenght(filter(n -> n.point == p, cell.nodes) != 0)
+	
 end
 
 function get_cell(canvas::Canvas,p)

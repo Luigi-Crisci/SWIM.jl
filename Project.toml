@@ -7,6 +7,7 @@ version = "0.1.0"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Rectangle = "9a9db56c-8f71-5460-add5-cb450131785e"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 
