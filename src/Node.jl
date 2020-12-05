@@ -25,8 +25,10 @@ function move(node::Node,canvas::Canvas,time::DateTime,alpha::Float16,k::Float16
 	#TODO: Add events here
 	if node.status == START 
 		choose_destination(node,canvas,alpha,k)
+	elseif node.status == WAITING 
+		wait_state(node,seconds)
 	end
-	#TODO: Add wait check
+
 	procede(node,seconds)
 	#TODO: Update seen for the cells (Only if arrived at destination? Check paper)
 end
@@ -39,8 +41,7 @@ function procede(node::Node,seconds::Float16)
 	angle = atan(distance[2],distance[1])
 	node.position = node.position + [sin(angle),cos(angle)] * speed * seconds # Make the node procede
 
-	#TODO: If arrived, the node pass to WAITING
-	if inside_home_cell(node) || have_surpassed_cell(node,angle)
+	if inside_home_cell(node) || have_surpassed_cell(node,angle) #It must be set to the center of the cell
 		wait_state(node,seconds)
 end
 
@@ -88,7 +89,7 @@ function wait_state(node,seconds)
 	if node.status == WAITING
 		node.waited_time += seconds
 		if node.waiting_time <= node.waited_time
-			# Start moving
+			node.status = LEAVE
 	else
 		node.status = WAITING
 		node.waiting_time = min(round(rand(Levy(1,2))),node.waiting_upper_bound)
