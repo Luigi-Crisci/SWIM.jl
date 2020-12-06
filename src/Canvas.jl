@@ -3,9 +3,11 @@ mutable struct Cell
 	position::Array{Float64}
 	nodes::Set
 	l::Int
+	x::Int
+	y::Int
 end
 
-Cell(p,l) = Cell(p,Set{Node}(),l)
+Cell(p,l,x,y) = Cell(p,Set{Node}(),l,x,y)
 
 mutable struct Canvas
 	x::Int
@@ -25,15 +27,19 @@ function initialize(canvas::Canvas)
 	end
 	
 	x = l / 2;
+	r = 1
 	while x < canvas.x
+		c = 1
 		y = l / 2
 		cells = Vector{Cell}([])
 		while  y < canvas.y
-			cell = Cell([x,y],l)
+			cell = Cell([x,y],l,r,c)
 			push!(cells,cell)
 			y += l
+			c = c + 1
 		end
 		x += l
+		r = r + 1
 		push!(canvas.cells,cells)
 	end
 	canvas.num_cells = canvas.x / l + canvas.y / l
@@ -68,9 +74,39 @@ function get_cell_position(canvas::Canvas,p)
 end
 
 function get_near_cells(canvas::Canvas,p)
-	if p[1] > length(canvas.cells) || p[2] > length(canvas.cells[1])
+	point = get_cell_position(canvas,p)
+
+	max_x = length(canvas.cells)
+	max_y =  length(canvas.cells[1])
+	if point[1] > max_x || point[2] > max_y
 		return
 	end
 	near_cells = []
-	#TODO:
+	if point[1] > 1
+		push!(near_cells,canvas.cells[point[1] - 1][point[2]])
+		if point[2] > 1
+			push!(near_cells,canvas.cells[point[1] - 1][point[2] - 1])
+		end
+		if point[2] < max_y
+			push!(near_cells,canvas.cells[point[1] - 1][point[2] + 1])
+		end
+	end
+	if point[1] < max_x
+		push!(near_cells,canvas.cells[point[1] + 1][point[2]])
+		if point[2] < max_y
+			push!(near_cells,canvas.cells[point[1] + 1][point[2] + 1])
+		end
+	end
+	if point[2] > 1
+		push!(near_cells,canvas.cells[point[1]][point[2] - 1])
+		if point[1] < max_x
+			push!(near_cells,canvas.cells[point[1] + 1][point[2] - 1])
+		end
+	end
+	if point[2] < max_y
+		push!(near_cells,canvas.cells[point[1]][point[2] + 1])
+	end
+
+	return near_cells
+
 end

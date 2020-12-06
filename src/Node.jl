@@ -8,15 +8,17 @@ mutable struct Node
 	status::Int
 	home::Array
 	position::Array
+	current_cell::Array
 	seen::Array
 	waiting_time::Int
 	waited_time::Int
 	starting_position::Array
 	waiting_upper_bound::Int
+	node_seen::Set
 
-	function Node(id::Int,status::Int,home,position::Array,num_cells::Int,upper_bound::Int)
-		seen = zeros(Int,num_cells,1)
-		new(id,status,home,position,seen,0,0,position,upper_bound)
+	function Node(id::Int,status::Int,home,position::Array,cells_num::Array,upper_bound::Int)
+		seen = zeros(Int,cells_num[1],cells_num[2])
+		new(id,status,home,position,home,seen,0,0,position,upper_bound,Set())
 	end
 
 end
@@ -47,6 +49,12 @@ function procede(node::Node,canvas::Canvas,seconds::Float64)
 		fix_surpassed_cell(node,angle,canvas)
 		wait_state(node,seconds)
 	end
+
+	if get_cell_position(canvas,node.position) != node.current_cell
+		delete_node_from_cell(node,canvas,node.current_cell)
+		node.current_cell = get_cell_position(canvas,node.position)
+		add_node_to_cell(node,canvas,node.current_cell)
+	end
 end
 
 #If the angle between the starting position and the actual position is changed, we have surpassed the home cell
@@ -69,7 +77,7 @@ function choose_destination(node,canvas,alpha,k)
 		for j in 1:length(canvas.cells[i])
 			cell = canvas.cells[i][j]
 			dist = distance(node,cell,k)
-			p_dist = alpha * dist + (1 - alpha) * node.seen[i+j] # Node weight
+			p_dist = alpha * dist + (1 - alpha) * node.seen[i,j] # Node weight
 			if p < p_dist
 				p = p_dist
 				current_cell = [i,j]
@@ -113,9 +121,10 @@ end
 #TODO: This should generate float points
 function generate_nodes(canvas::Canvas,n::Int,waiting_upper_bound::Int)
 	nodes = []
+	cells_num = [ length(canvas.cells),length(canvas.cells[1]) ]
 	for i in 1:n
 		p = generate_point(canvas)
-		node = Node(i,0,get_cell_position(canvas,p),p,canvas.num_cells,waiting_upper_bound)
+		node = Node(i,0,get_cell_position(canvas,p),p,cells_num,waiting_upper_bound)
 		add_node_to_home_cell(node,canvas)
 		push!(nodes,node)
 	end
@@ -130,10 +139,39 @@ function add_node_to_home_cell(node,canvas)
 	push!(get_home_cell(node,canvas).nodes,node)
 end
 
-function update_seen(node::Node,canvas::Canvas)
-	node.seen[node.home[1] + node.home[2]] = length(get_home_cell(node,canvas))
+function add_node_to_cell(node,canvas,cell)
+	push!(canvas.cells[cell[1]][cell[2]].nodes,node)
+end
+
+function delete_node_from_cell(node,canvas,cell)
+	delete!(canvas.cells[cell[1]][cell[2]].nodes,node)
+end
+
+function update_seen(node::Node,canvas::Canvas,event_writer::EventWriter,time::DateTime)
+	node.seen[node.home[1],node.home[2]] = length(get_home_cell(node,canvas).nodes) - 1
+
+	for near_node in get_home_cell(node,canvas).nodes
+		if near_node.id == node.id
+			continue
+		end
+		if define_event_and_add(event_writer,node,near_node,time)
+			push!(near_node.node_seen,node)
+		end
+	end
+
 	near_cells = get_near_cells(canvas,node.position)
 	for cell in near_cells
-		#TODO: Use Euclidean distance to find nodes in trasmission range
-		node.seen[cell[1] + cell[2]] = length(canvas.cells[cell[1]][cell[2]].nodes)
+		node.seen[cell.x,cell.y] = 0
+
+		for near_node in cell.nodes
+			dist = evaluate(Euclidean(),node.position,near_node.position)
+			if dist <= canvas.r
+				if define_event_and_add(event_writer,node,near_node,time)
+					push!(near_node.node_seen,node)
+				end
+				node.seen[cell.x,cell.y] += 1
+			end
+		end
+	end
 end
+
